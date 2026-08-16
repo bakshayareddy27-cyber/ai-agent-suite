@@ -1,9 +1,4 @@
 streamlit
-langchain
-langchain-community
-langchain-core
-langchain-openai
 langgraph
-faiss-cpu
-python-dotenv
-pydantic
+langchain-google-genai
+google-genai
