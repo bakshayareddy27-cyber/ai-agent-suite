@@ -2,6 +2,9 @@ import sys
 import os
 import streamlit as st
 import time
+# Make sure your imports look like this:
+from agents.commandcheck.graph import run_commandcheck_graph
+from agents.storage_detective.graph import run_storage_graph
 
 # Force root directory into Python path so Render resolves the 'agents' module
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
