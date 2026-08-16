@@ -1,5 +1,10 @@
+import sys
+import os
 import streamlit as st
 import time
+
+# Force root directory into Python path so Render resolves the 'agents' module
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 # Page setup
 st.set_page_config(
@@ -9,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Initialize Session States for interactive persistence
+# Initialize Session States
 if "cmd_value" not in st.session_state:
     st.session_state["cmd_value"] = ""
 if "path_value" not in st.session_state:
@@ -17,7 +22,7 @@ if "path_value" not in st.session_state:
 if "selected_agent" not in st.session_state:
     st.session_state["selected_agent"] = "CommandCheck"
 
-# Custom Styling (Neo-Brutalist Aesthetic with explicit text color overrides)
+# Custom Styling (Preserved exact frontend aesthetic + code tag contrast fix)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Space+Grotesk:wght@600;700&display=swap');
@@ -30,7 +35,6 @@ st.markdown("""
 
     header[data-testid="stHeader"] { visibility: hidden; }
     
-    /* Neo-Brutalist Cards */
     .neo-card {
         background: #ffffff;
         border: 2.5px solid #121212;
@@ -95,14 +99,6 @@ st.markdown("""
         box-shadow: 2px 2px 0px #121212 !important;
     }
 
-    /* Target Pill Navigation Buttons */
-    .tab-btn {
-        background-color: #ffffff !important;
-        color: #121212 !important;
-        border: 2.5px solid #121212 !important;
-    }
-
-    /* Output Card Formatting Fix */
     .report-card {
         background-color: #ffffff !important;
         border: 2.5px solid #121212 !important;
@@ -116,11 +112,20 @@ st.markdown("""
     .report-card * {
         color: #121212 !important;
     }
+
+    /* Fix dark code block background inside markdown reports */
+    .report-card code {
+        background-color: #f0f0f0 !important;
+        color: #d32f2f !important;
+        padding: 2px 6px !important;
+        border-radius: 6px !important;
+        border: 1px solid #121212 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# Agent Graph Handlers with Diagnostic Output Formatting
+# Backend Invocation Handlers
 # -----------------------------------------------------------------------------
 def run_commandcheck_agent(cmd_input):
     try:
@@ -131,7 +136,6 @@ def run_commandcheck_agent(cmd_input):
             return response.get("output") or response.get("messages", [{}])[-1].content
         return str(response)
     except Exception as e:
-        # Structured Markdown report
         return f"""### 🛡️ Safety Assessment Summary
 
 **Target Command:** `{cmd_input}`
@@ -167,9 +171,7 @@ def run_storage_agent(target_path):
 
 *(Agent Graph Connection Status: Live Evaluation Engine — {str(e)})*"""
 
-# -----------------------------------------------------------------------------
-# Top Navigation Bar
-# -----------------------------------------------------------------------------
+# Navigation Bar Header
 st.markdown("<br>", unsafe_allow_html=True)
 top_col1, top_col2 = st.columns([3, 2])
 
@@ -191,7 +193,7 @@ with top_col2:
 st.markdown("<br>", unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# View 1: CommandCheck Agent UI
+# Main Views
 # -----------------------------------------------------------------------------
 if st.session_state["selected_agent"] == "CommandCheck":
     main_col, side_col = st.columns([3, 2])
@@ -200,7 +202,7 @@ if st.session_state["selected_agent"] == "CommandCheck":
         st.markdown("""
             <div class='neo-card'>
                 <h3 style='margin-top:0;'>Quick Scenarios</h3>
-                <p style='color: #555; font-size: 0.85rem;'>Click a preset below to populate the audit input box.</p>
+                <p style='color: #555; font-size: 0.85rem;'>Select a scenario below to auto-fill the audit input box.</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -222,7 +224,7 @@ if st.session_state["selected_agent"] == "CommandCheck":
         st.markdown("""
             <div class='neo-card'>
                 <h3 style='margin-top:0;'>Generate Command Audit</h3>
-                <p style='color: #555; font-size: 0.9rem;'>Inspect syntax, check destructive flags, and assess blast radius prior to execution.</p>
+                <p style='color: #555; font-size: 0.9rem;'>Inspect syntax, verify destructive flags, and assess blast radius prior to execution.</p>
             </div>
         """, unsafe_allow_html=True)
 
@@ -239,9 +241,9 @@ if st.session_state["selected_agent"] == "CommandCheck":
     if analyze_btn and cmd_input:
         st.markdown("<br>", unsafe_allow_html=True)
         with st.status("Agentic Execution Trace...", expanded=True) as status:
-            st.write("• **Node 1 (Syntax Parser):** Deconstructing flags and execution parameters...")
+            st.write("• **Node 1 (Syntax Parser):** Deconstructing execution flags...")
             time.sleep(0.3)
-            st.write("• **Node 2 (Vector RAG Search):** Searching knowledge base for risk profiles...")
+            st.write("• **Node 2 (Vector RAG Search):** Searching knowledge base for safety rules...")
             time.sleep(0.4)
             st.write("• **Node 3 (Safety Evaluator):** Synthesizing diagnostic risk assessment...")
             time.sleep(0.3)
@@ -251,9 +253,6 @@ if st.session_state["selected_agent"] == "CommandCheck":
 
         st.markdown(f"<div class='report-card'>{report}</div>", unsafe_allow_html=True)
 
-# -----------------------------------------------------------------------------
-# View 2: Storage Detective Agent UI
-# -----------------------------------------------------------------------------
 else:
     main_col, side_col = st.columns([3, 2])
 
@@ -261,7 +260,7 @@ else:
         st.markdown("""
             <div class='neo-card'>
                 <h3 style='margin-top:0;'>Storage Scope</h3>
-                <p style='color: #555; font-size: 0.85rem;'>Checks build logs, orphaned packages, and temp caches safely.</p>
+                <p style='color: #555; font-size: 0.85rem;'>Scans build logs, orphaned package files, and temporary cache folders.</p>
             </div>
         """, unsafe_allow_html=True)
         
@@ -278,7 +277,7 @@ else:
         st.markdown("""
             <div class='neo-card'>
                 <h3 style='margin-top:0;'>Inspect Storage Path</h3>
-                <p style='color: #555; font-size: 0.9rem;'>Audit cache build artifacts and verify retention policies before clearing disk space.</p>
+                <p style='color: #555; font-size: 0.9rem;'>Audit cache build artifacts and verify retention dependencies before releasing space.</p>
             </div>
         """, unsafe_allow_html=True)
 
@@ -294,11 +293,11 @@ else:
     if detect_btn and target_path:
         st.markdown("<br>", unsafe_allow_html=True)
         with st.status("Directory Audit Pipeline...", expanded=True) as status:
-            st.write("• **Path Inspection:** Checking target directory permissions...")
+            st.write("• **Path Inspection:** Verifying target directory permissions...")
             time.sleep(0.3)
-            st.write("• **Cache Identification:** Scanning for package caches and build output...")
+            st.write("• **Cache Identification:** Scanning for package caches and build artifacts...")
             time.sleep(0.4)
-            st.write("• **Safety Verification:** Cross-referencing retention policies...")
+            st.write("• **Safety Verification:** Cross-referencing retention rules...")
             time.sleep(0.3)
 
             report = run_storage_agent(target_path)
