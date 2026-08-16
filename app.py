@@ -3,7 +3,7 @@ import os
 import streamlit as st
 import time
 # Make sure your imports look like this:
-from agents.commandcheck.graph import run_commandcheck_graph
+from agents.commandcheck.graph import run_commandcheck as run_commandcheck_graph
 from agents.storage_detective.graph import run_storage_graph
 
 # Force root directory into Python path so Render resolves the 'agents' module
