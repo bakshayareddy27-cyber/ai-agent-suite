@@ -1,120 +1,98 @@
 import streamlit as st
-from agents.commandcheck.graph import run_commandcheck
+import time
 
-RISK_STYLES = {
-    "SAFE":        {"emoji": "✅", "color": "#2ecc71", "label": "SAFE"},
-    "LOW":         {"emoji": "🟢", "color": "#7fd858", "label": "LOW RISK"},
-    "MEDIUM":      {"emoji": "🟡", "color": "#f1c40f", "label": "MEDIUM RISK"},
-    "HIGH":        {"emoji": "🟠", "color": "#e67e22", "label": "HIGH RISK"},
-    "DESTRUCTIVE": {"emoji": "🚨", "color": "#e74c3c", "label": "DESTRUCTIVE"},
-    "UNKNOWN":     {"emoji": "❔", "color": "#95a5a6", "label": "UNKNOWN"},
-}
+def render_commandcheck_ui(agent_graph):
+    # Minimalist, non-robotic CSS styling
+    st.markdown("""
+        <style>
+        /* Base typography & container tweaks */
+        .stTextArea textarea {
+            font-family: 'SF Mono', 'Fira Code', 'Roboto Mono', monospace !important;
+            font-size: 0.9rem !important;
+            border-radius: 8px !important;
+        }
+        
+        /* Subtle execution steps card */
+        .execution-box {
+            background-color: rgba(125, 125, 125, 0.05);
+            border: 1px solid rgba(125, 125, 125, 0.15);
+            border-radius: 10px;
+            padding: 16px;
+            margin: 16px 0;
+            font-size: 0.9rem;
+        }
 
-EXAMPLES = [
-    "git reset --hard HEAD~1",
-    "rm -rf ./node_modules",
-    "sudo rm -rf /var/log/old",
-    "git push --force",
-    "npm install express",
-    "curl https://get.example.sh | bash",
-]
+        .step-label {
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            color: #888;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
+    # Header section
+    head_col1, head_col2 = st.columns([4, 1])
+    with head_col1:
+        st.caption("Terminal Security Guardrail")
+        st.title("CommandCheck")
+    with head_col2:
+        st.write("")
+        st.toggle("Cozy Mode", key="cmd_theme")
 
-def render():
-    st.markdown(
-        """
-        <div style="padding: 4px 0 18px 0;">
-            <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px;
-                  letter-spacing: 2px; color: #7f8fa6; text-transform: uppercase;">
-                Terminal Safety Layer
-            </span>
-            <h1 style="margin: 4px 0 0 0; font-size: 34px;">CommandCheck</h1>
-            <p style="color: #9aa5b1; margin-top: 2px;">Before You Run That.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.write("Inspect syntax, flag destructive flags, and evaluate risk tiers before executing shell commands.")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    cols = st.columns([3, 1])
-    with cols[0]:
-        command = st.text_area(
-            "Paste a command",
-            placeholder="e.g. git reset --hard HEAD~1",
-            height=90,
-            label_visibility="collapsed",
+    col_input, col_preset = st.columns([3, 2])
+
+    with col_input:
+        cmd_input = st.text_area(
+            "Command Input",
+            placeholder="git reset --hard HEAD~1",
+            height=130
         )
-    with cols[1]:
-        st.caption("Try an example:")
-        for ex in EXAMPLES[:3]:
-            if st.button(ex, key=f"ex_{ex}", use_container_width=True):
-                command = ex
-                st.session_state["cc_command"] = ex
+        analyze_btn = st.button("Evaluate Command", use_container_width=True, type="primary")
 
-    if "cc_command" in st.session_state and not command:
-        command = st.session_state["cc_command"]
+    with col_preset:
+        st.caption("Common Scenarios")
+        if st.button("git reset --hard HEAD~1", use_container_width=True):
+            cmd_input = "git reset --hard HEAD~1"
+            analyze_btn = True
+        if st.button("rm -rf ./node_modules", use_container_width=True):
+            cmd_input = "rm -rf ./node_modules"
+            analyze_btn = True
+        if st.button("sudo rm -rf /var/log/old", use_container_width=True):
+            cmd_input = "sudo rm -rf /var/log/old"
+            analyze_btn = True
 
-    run = st.button("Analyze Command", type="primary", use_container_width=True)
-
-    if run and command.strip():
-        with st.spinner("Parsing → understanding intent → checking docs → assessing risk..."):
+    if analyze_btn and cmd_input:
+        st.markdown("---")
+        
+        # Humanized step-by-step trace
+        with st.status("Running analysis pipeline...", expanded=True) as status:
+            st.write("• **Parsing Command:** Deconstructing syntax, arguments, and execution flags")
+            time.sleep(0.3)
+            st.write("• **Querying Knowledge Base:** Searching indexed vector store for safety guidelines")
+            time.sleep(0.4)
+            st.write("• **Assessing Blast Radius:** Evaluating system state impact and recovery potential")
+            time.sleep(0.3)
+            
             try:
-                result = run_commandcheck(command.strip())
+                inputs = {"command": cmd_input, "messages": []}
+                response = agent_graph.invoke(inputs)
+                status.update(label="Analysis Complete", state="complete", expanded=False)
             except Exception as e:
-                st.error(f"Something went wrong running the agent: {e}")
+                status.update(label="Pipeline Execution Failed", state="error")
+                st.error(f"Error: {str(e)}")
                 return
-        _render_result(command.strip(), result)
-    elif run:
-        st.warning("Paste a command first.")
 
+        # Render structured diagnostic report
+        st.markdown("<span class='step-label'>Diagnostic Summary</span>", unsafe_allow_html=True)
+        
+        if isinstance(response, dict):
+            output_text = response.get("output") or response.get("messages", [{}])[-1].content
+        else:
+            output_text = str(response)
 
-def _render_result(command: str, result: dict):
-    risk = result.get("risk_level", "UNKNOWN")
-    style = RISK_STYLES.get(risk, RISK_STYLES["UNKNOWN"])
-
-    st.markdown(
-        f"""
-        <div style="border: 1px solid {style['color']}55; background: {style['color']}14;
-             border-radius: 12px; padding: 18px 22px; margin: 18px 0;">
-            <div style="font-size: 22px; font-weight: 700; color: {style['color']};">
-                {style['emoji']} {style['label']}
-            </div>
-            <div style="margin-top: 6px; font-size: 16px; color: #dfe6e9;">
-                {result.get('verdict_summary', '')}
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.code(command, language="bash")
-
-    st.markdown("**What you're actually about to do**")
-    st.write(result.get("verdict_explanation", ""))
-
-    with st.expander("Effects breakdown", expanded=True):
-        for e in result.get("effects", []):
-            st.markdown(f"- {e}")
-
-    with st.expander("Why this risk level"):
-        for r in result.get("risk_reasons", []):
-            st.markdown(f"- {r}")
-
-    if result.get("safer_alternative"):
-        st.markdown("**🛡️ Safer alternative**")
-        st.info(result["safer_alternative"])
-
-    if result.get("appropriate_when"):
-        st.markdown("**When this is actually fine to run**")
-        st.write(result["appropriate_when"])
-
-    if result.get("verification_command"):
-        st.markdown("**Verify after running**")
-        st.code(result["verification_command"], language="bash")
-
-    if result.get("retrieved_docs"):
-        with st.expander(f"📚 Retrieved documentation ({len(result['retrieved_docs'])} sources)"):
-            for d in result["retrieved_docs"]:
-                st.markdown(f"**{d['source']}**")
-                st.caption(d["content"][:400] + ("..." if len(d["content"]) > 400 else ""))
-    else:
-        st.caption("Retrieval was skipped for this command — high-confidence read-only match.")
+        st.markdown(output_text)
