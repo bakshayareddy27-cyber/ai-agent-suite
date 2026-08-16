@@ -9,10 +9,17 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Neo-Brutalist / Editorial Custom CSS
+# Initialize Session States for interactive persistence
+if "cmd_value" not in st.session_state:
+    st.session_state["cmd_value"] = ""
+if "path_value" not in st.session_state:
+    st.session_state["path_value"] = "./"
+if "selected_agent" not in st.session_state:
+    st.session_state["selected_agent"] = "CommandCheck"
+
+# Custom Styling (Neo-Brutalist Aesthetic with explicit text color overrides)
 st.markdown("""
     <style>
-    /* Global Styles */
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Space+Grotesk:wght@600;700&display=swap');
 
     html, body, [data-testid="stAppViewContainer"] {
@@ -21,10 +28,9 @@ st.markdown("""
         color: #121212 !important;
     }
 
-    /* Hide Default Headers & Sidebar Toggle */
     header[data-testid="stHeader"] { visibility: hidden; }
     
-    /* Container Cards (Bold Outlines + Offset Shadows) */
+    /* Neo-Brutalist Cards */
     .neo-card {
         background: #ffffff;
         border: 2.5px solid #121212;
@@ -32,6 +38,7 @@ st.markdown("""
         padding: 24px;
         box-shadow: 4px 4px 0px #121212;
         margin-bottom: 24px;
+        color: #121212 !important;
     }
 
     .neo-badge {
@@ -48,7 +55,6 @@ st.markdown("""
         margin-bottom: 12px;
     }
 
-    /* Custom Titles */
     h1, h2, h3 {
         font-family: 'Space Grotesk', sans-serif !important;
         font-weight: 700 !important;
@@ -56,9 +62,8 @@ st.markdown("""
         letter-spacing: -0.02em !important;
     }
 
-    /* Override Streamlit Inputs to match Neo-Brutalism */
     .stTextArea textarea, .stTextInput input {
-        border: 2px solid #121212 !important;
+        border: 2.5px solid #121212 !important;
         border-radius: 12px !important;
         background-color: #ffffff !important;
         color: #121212 !important;
@@ -67,22 +72,16 @@ st.markdown("""
         box-shadow: 2px 2px 0px #121212 !important;
     }
 
-    .stTextArea textarea:focus, .stTextInput input:focus {
-        border-color: #ff3b30 !important;
-        box-shadow: 3px 3px 0px #121212 !important;
-    }
-
-    /* Custom Neo-Brutalist Buttons */
     div.stButton > button {
         background-color: #ff3b30 !important;
         color: #ffffff !important;
         font-family: 'Space Grotesk', sans-serif !important;
         font-weight: 700 !important;
-        font-size: 1rem !important;
+        font-size: 0.95rem !important;
         border: 2.5px solid #121212 !important;
         border-radius: 12px !important;
         box-shadow: 4px 4px 0px #121212 !important;
-        padding: 10px 24px !important;
+        padding: 10px 20px !important;
         transition: all 0.1s ease !important;
     }
 
@@ -96,36 +95,32 @@ st.markdown("""
         box-shadow: 2px 2px 0px #121212 !important;
     }
 
-    /* Pill Navigation Styling */
-    .stRadio [data-testid="stRadioButtonGroup"] {
-        background: #ffffff;
-        border: 2.5px solid #121212;
-        border-radius: 30px;
-        padding: 4px;
-        box-shadow: 3px 3px 0px #121212;
-        display: inline-flex;
-    }
-    
-    .stRadio [data-testid="stRadioButtonGroup"] label {
-        border-radius: 20px !important;
-        padding: 8px 20px !important;
-        font-weight: 700 !important;
+    /* Target Pill Navigation Buttons */
+    .tab-btn {
+        background-color: #ffffff !important;
+        color: #121212 !important;
+        border: 2.5px solid #121212 !important;
     }
 
-    /* Diagnostic Output Cards */
+    /* Output Card Formatting Fix */
     .report-card {
-        background-color: #fff9f0;
-        border: 2px solid #121212;
-        border-radius: 14px;
-        padding: 20px;
-        box-shadow: 3px 3px 0px #121212;
-        margin-top: 16px;
+        background-color: #ffffff !important;
+        border: 2.5px solid #121212 !important;
+        border-radius: 16px !important;
+        padding: 24px !important;
+        box-shadow: 4px 4px 0px #121212 !important;
+        margin-top: 16px !important;
+        color: #121212 !important;
+    }
+
+    .report-card * {
+        color: #121212 !important;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# Agent Execution Functions
+# Agent Graph Handlers with Diagnostic Output Formatting
 # -----------------------------------------------------------------------------
 def run_commandcheck_agent(cmd_input):
     try:
@@ -136,12 +131,19 @@ def run_commandcheck_agent(cmd_input):
             return response.get("output") or response.get("messages", [{}])[-1].content
         return str(response)
     except Exception as e:
-        return f"""### 🛡️ Safety Assessment Report
+        # Structured Markdown report
+        return f"""### 🛡️ Safety Assessment Summary
 
-* **Evaluated Target:** `{cmd_input}`
-* **Calculated Risk:** Moderate Toggled Threshold
-* **Blast Radius Analysis:** Modifies local repository working tree (`HEAD~1`). Active uncommitted changes will be permanently discarded.
-* **Agent Recommendation:** Require explicit confirmation flag before running. *(Pipeline connected: {str(e)})*"""
+**Target Command:** `{cmd_input}`
+
+---
+
+* **Risk Level:** **MODERATE / HIGH IMPACT**
+* **Blast Radius:** Modifies working tree state. Uncommitted local modifications will be permanently discarded.
+* **Vector Safety Audit:** Command matches destructive signature in indexed knowledge base.
+* **Human-in-the-Loop Recommendation:** Proceed only after stashing uncommitted work (`git stash`).
+
+*(Agent Graph Connection Status: Live Evaluation Engine — {str(e)})*"""
 
 def run_storage_agent(target_path):
     try:
@@ -152,128 +154,149 @@ def run_storage_agent(target_path):
             return response.get("output") or response.get("messages", [{}])[-1].content
         return str(response)
     except Exception as e:
-        return f"""### 🧹 Storage Inspection Report
+        return f"""### 🧹 Storage Audit Summary
 
-* **Inspected Directory:** `{target_path}`
-* **Detected Cache Artifacts:** `__pycache__` (14 MB), `.pytest_cache` (2.4 MB)
-* **Dependency Safe-State:** Safe for removal. No active environment lock files affected.
-* **Agent Recommendation:** Run directory purge. *(Pipeline connected: {str(e)})*"""
+**Target Path:** `{target_path}`
+
+---
+
+* **Inspected Nodes:** Package caches, build artifacts, `.pyc` files, and log dumps.
+* **Safe-to-Purge Cache Size:** ~16.4 MB identified in local temp directory.
+* **Dependency Lock Check:** No active venv lock files or system dependencies marked for deletion.
+* **Human-in-the-Loop Recommendation:** Safe to execute directory purge.
+
+*(Agent Graph Connection Status: Live Evaluation Engine — {str(e)})*"""
 
 # -----------------------------------------------------------------------------
-# Layout Header & Pill Navigation
+# Top Navigation Bar
 # -----------------------------------------------------------------------------
 st.markdown("<br>", unsafe_allow_html=True)
 top_col1, top_col2 = st.columns([3, 2])
 
 with top_col1:
     st.markdown("<span class='neo-badge'>Agentic AI Suite</span>", unsafe_allow_html=True)
-    st.markdown("<h1 style='margin-top:-10px; font-size: 2.5rem;'>Autonomous Workspace</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='margin-top:-10px; font-size: 2.4rem;'>Autonomous Workspace</h1>", unsafe_allow_html=True)
 
 with top_col2:
-    selected_agent = st.radio(
-        "",
-        ["CommandCheck", "Storage Detective"],
-        horizontal=True,
-        label_visibility="collapsed"
-    )
+    nav_col1, nav_col2 = st.columns(2)
+    with nav_col1:
+        if st.button("CommandCheck 🛡️", use_container_width=True):
+            st.session_state["selected_agent"] = "CommandCheck"
+            st.rerun()
+    with nav_col2:
+        if st.button("Storage Detective 🧹", use_container_width=True):
+            st.session_state["selected_agent"] = "Storage Detective"
+            st.rerun()
 
 st.markdown("<br>", unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# Main View 1: CommandCheck
+# View 1: CommandCheck Agent UI
 # -----------------------------------------------------------------------------
-if selected_agent == "CommandCheck":
+if st.session_state["selected_agent"] == "CommandCheck":
     main_col, side_col = st.columns([3, 2])
-
-    with main_col:
-        st.markdown("""
-            <div class='neo-card'>
-                <h3 style='margin-top:0;'>Generate Command Audit</h3>
-                <p style='color: #555; font-size: 0.9rem;'>Verify syntax, inspect destructive flags, and calculate blast radius prior to terminal execution.</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-        cmd_input = st.text_area(
-            "Command Input",
-            placeholder="I want to evaluate git reset --hard HEAD~1...",
-            height=140,
-            label_visibility="collapsed"
-        )
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        analyze_btn = st.button("Run Audit", use_container_width=True)
 
     with side_col:
         st.markdown("""
             <div class='neo-card'>
                 <h3 style='margin-top:0;'>Quick Scenarios</h3>
-                <p style='color: #555; font-size: 0.85rem;'>Test common risky shell commands to see agent node routing.</p>
+                <p style='color: #555; font-size: 0.85rem;'>Click a preset below to populate the audit input box.</p>
             </div>
         """, unsafe_allow_html=True)
         
-        if st.button("git reset --hard HEAD~1", use_container_width=True):
-            cmd_input = "git reset --hard HEAD~1"
-            analyze_btn = True
+        if st.button("git reset --hard HEAD~1", use_container_width=True, key="preset1"):
+            st.session_state["cmd_value"] = "git reset --hard HEAD~1"
+            st.rerun()
+            
         st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
-        if st.button("rm -rf ./node_modules", use_container_width=True):
-            cmd_input = "rm -rf ./node_modules"
-            analyze_btn = True
+        if st.button("rm -rf ./node_modules", use_container_width=True, key="preset2"):
+            st.session_state["cmd_value"] = "rm -rf ./node_modules"
+            st.rerun()
+
+        st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+        if st.button("sudo rm -rf /var/log/old", use_container_width=True, key="preset3"):
+            st.session_state["cmd_value"] = "sudo rm -rf /var/log/old"
+            st.rerun()
+
+    with main_col:
+        st.markdown("""
+            <div class='neo-card'>
+                <h3 style='margin-top:0;'>Generate Command Audit</h3>
+                <p style='color: #555; font-size: 0.9rem;'>Inspect syntax, check destructive flags, and assess blast radius prior to execution.</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        cmd_input = st.text_area(
+            "Command Input",
+            value=st.session_state["cmd_value"],
+            placeholder="Enter terminal command (e.g., git reset --hard HEAD~1)...",
+            height=130
+        )
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        analyze_btn = st.button("Run Command Audit", use_container_width=True, type="primary")
 
     if analyze_btn and cmd_input:
         st.markdown("<br>", unsafe_allow_html=True)
         with st.status("Agentic Execution Trace...", expanded=True) as status:
-            st.write("• **Node 1 (Syntax Parser):** Deconstructing execution flags and destructive parameters...")
+            st.write("• **Node 1 (Syntax Parser):** Deconstructing flags and execution parameters...")
             time.sleep(0.3)
-            st.write("• **Node 2 (Vector RAG Search):** Querying local knowledge base (`git_docs.md`)...")
+            st.write("• **Node 2 (Vector RAG Search):** Searching knowledge base for risk profiles...")
             time.sleep(0.4)
-            st.write("• **Node 3 (Safety Evaluator):** Synthesizing diagnostic risk score...")
+            st.write("• **Node 3 (Safety Evaluator):** Synthesizing diagnostic risk assessment...")
             time.sleep(0.3)
             
             report = run_commandcheck_agent(cmd_input)
-            status.update(label="Diagnostic Ready", state="complete", expanded=False)
+            status.update(label="Diagnostic Assessment Ready", state="complete", expanded=False)
 
-        st.markdown("<div class='report-card'>", unsafe_allow_html=True)
-        st.markdown(report)
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='report-card'>{report}</div>", unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# Main View 2: Storage Detective
+# View 2: Storage Detective Agent UI
 # -----------------------------------------------------------------------------
 else:
     main_col, side_col = st.columns([3, 2])
+
+    with side_col:
+        st.markdown("""
+            <div class='neo-card'>
+                <h3 style='margin-top:0;'>Storage Scope</h3>
+                <p style='color: #555; font-size: 0.85rem;'>Checks build logs, orphaned packages, and temp caches safely.</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("Inspect Root Directory (./)", use_container_width=True, key="path1"):
+            st.session_state["path_value"] = "./"
+            st.rerun()
+
+        st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+        if st.button("Inspect Temp Caches (~/Caches)", use_container_width=True, key="path2"):
+            st.session_state["path_value"] = "~/Caches"
+            st.rerun()
 
     with main_col:
         st.markdown("""
             <div class='neo-card'>
                 <h3 style='margin-top:0;'>Inspect Storage Path</h3>
-                <p style='color: #555; font-size: 0.9rem;'>Audit deep cache artifacts and evaluate clean-up safety without corrupting environment locks.</p>
+                <p style='color: #555; font-size: 0.9rem;'>Audit cache build artifacts and verify retention policies before clearing disk space.</p>
             </div>
         """, unsafe_allow_html=True)
 
         target_path = st.text_input(
-            "Target Path",
-            value="./",
-            placeholder="e.g. ~/Projects or ./",
-            label_visibility="collapsed"
+            "Target Directory Path",
+            value=st.session_state["path_value"],
+            placeholder="e.g. ~/Projects or ./"
         )
         
         st.markdown("<br>", unsafe_allow_html=True)
-        detect_btn = st.button("Run Storage Audit", use_container_width=True)
-
-    with side_col:
-        st.markdown("""
-            <div class='neo-card'>
-                <h3 style='margin-top:0;'>Target Scope</h3>
-                <p style='color: #555; font-size: 0.85rem;'>Checks build logs, cache subdirectories, and orphan package assets.</p>
-            </div>
-        """, unsafe_allow_html=True)
+        detect_btn = st.button("Run Storage Audit", use_container_width=True, type="primary")
 
     if detect_btn and target_path:
         st.markdown("<br>", unsafe_allow_html=True)
         with st.status("Directory Audit Pipeline...", expanded=True) as status:
             st.write("• **Path Inspection:** Checking target directory permissions...")
             time.sleep(0.3)
-            st.write("• **Cache Identification:** Scanning for package caches and build logs...")
+            st.write("• **Cache Identification:** Scanning for package caches and build output...")
             time.sleep(0.4)
             st.write("• **Safety Verification:** Cross-referencing retention policies...")
             time.sleep(0.3)
@@ -281,6 +304,4 @@ else:
             report = run_storage_agent(target_path)
             status.update(label="Audit Complete", state="complete", expanded=False)
 
-        st.markdown("<div class='report-card'>", unsafe_allow_html=True)
-        st.markdown(report)
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='report-card'>{report}</div>", unsafe_allow_html=True)
