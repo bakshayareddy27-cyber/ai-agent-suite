@@ -130,25 +130,58 @@ st.markdown("""
 # -----------------------------------------------------------------------------
 # Backend Invocation Handlers
 # -----------------------------------------------------------------------------
-def run_commandcheck_agent(cmd_input):
-    try:
-        from agents.commandcheck_agent import graph as cmd_graph
-        inputs = {"command": cmd_input, "messages": []}
-        response = cmd_graph.invoke(inputs)
-        if isinstance(response, dict):
-            return response.get("output") or response.get("messages", [{}])[-1].content
-        return str(response)
-    except Exception as e:
-        return f"""### 🛡️ Safety Assessment Summary
+# ---------------------------------------------------------------------------
+# Entry point used by the Streamlit UI.
+# ---------------------------------------------------------------------------
 
-**Target Command:** `{cmd_input}`
+def run_commandcheck(command: str) -> dict:
+    app = build_graph()
+    final_state = app.invoke({"raw_command": command})
+    
+    risk_level = final_state.get('risk_level', 'UNKNOWN')
+    intent = final_state.get('intent', 'It analyzes or executes workspace operations.')
+    effects_list = final_state.get('effects', ['Standard workspace file modification'])
+    blast_radius = ", ".join(effects_list) if isinstance(effects_list, list) else str(effects_list)
+    hitl_recommendation = final_state.get('safer_alternative', 'Review uncommitted changes before executing.')
+    vector_status = "Command matches destructive signature in indexed knowledge base." if final_state.get('retrieved_docs') else "Heuristic check passed safely."
 
----
+    # High-end UI layout with color-coded warning badges and distinct visual cards
+    response_output = f"""
+<div style="font-family: 'Plus Jakarta Sans', sans-serif; color: #121212;">
 
-* **Risk Level:** **MODERATE / HIGH IMPACT**
-* **Blast Radius:** Modifies working tree state. Uncommitted local modifications will be permanently discarded.
-* **Vector Safety Audit:** Command matches destructive signature in indexed knowledge base.
-* **Human-in-the-Loop Recommendation:** Proceed only after stashing uncommitted work (`git stash`).
+  <!-- Non-Tech / Executive Summary Section -->
+  <div style="background: #f4f4f0; border: 2px solid #121212; border-radius: 12px; padding: 18px; margin-bottom: 16px;">
+    <span style="background: #121212; color: #ffffff; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">For Non-Tech Reviewers</span>
+    <h3 style="margin-top: 10px; margin-bottom: 8px; font-size: 1.15rem; color: #121212;">💡 Plain-English Summary</h3>
+    <p style="margin: 4px 0;"><strong>What this command does:</strong> {intent}</p>
+    <p style="margin: 4px 0;"><strong>Risk Level:</strong> <span style="background: #ff3b30; color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: bold;">{risk_level}</span></p>
+    <p style="margin: 4px 0;"><strong>Safe Recommendation:</strong> {hitl_recommendation}</p>
+  </div>
+
+  <!-- Technical Audit Section -->
+  <div style="background: #ffffff; border: 2px solid #121212; border-radius: 12px; padding: 18px;">
+    <span style="background: #e0e0e0; color: #121212; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">For Engineers</span>
+    <h3 style="margin-top: 10px; margin-bottom: 8px; font-size: 1.15rem; color: #121212;">⚙️ Technical Diagnostics & Vector Audit</h3>
+    <ul style="margin: 0; padding-left: 20px;">
+      <li style="margin: 4px 0;"><strong>Target Command:</strong> <code>{command}</code></li>
+      <li style="margin: 4px 0;"><strong>Blast Radius:</strong> {blast_radius}</li>
+      <li style="margin: 4px 0;"><strong>Vector Safety Audit:</strong> {vector_status}</li>
+      <li style="margin: 4px 0;"><strong>Human-in-the-Loop Safeguard:</strong> Recommended pause before execution.</li>
+    </ul>
+  </div>
+
+  <div style="margin-top: 12px; font-size: 0.8rem; color: #666; text-align: right;">
+    <em>Agent Graph Connection Status: Live Evaluation Engine — Active</em>
+  </div>
+
+</div>
+"""
+    
+    final_state["formatted_output"] = response_output
+    return final_state
+
+# Alias so app.py finds it successfully
+run_commandcheck_graph = run_commandcheck
 
 *(Agent Graph Connection Status: Live Evaluation Engine — {str(e)})*"""
 
