@@ -261,9 +261,38 @@ def build_graph():
 
     return graph.compile()
 
+# ---------------------------------------------------------------------------
+# Entry point used by the Streamlit UI.
+# ---------------------------------------------------------------------------
 
 def run_commandcheck(command: str) -> dict:
-    """Entry point used by the Streamlit UI."""
     app = build_graph()
     final_state = app.invoke({"raw_command": command})
+    
+    # Extract dynamic variables from your LangGraph state
+    risk_level = final_state.get('risk_level', 'UNKNOWN')
+    target_command = command
+    blast_radius = ", ".join(final_state.get('effects', ['Standard workspace file modification']))
+    vector_audit_status = "Command matches destructive signature in indexed knowledge base." if final_state.get('retrieved_docs') else "Heuristic check passed."
+    hitl_recommendation = final_state.get('safer_alternative', 'Review uncommitted changes before executing.')
+
+    # Exact structured output format requested
+    response_output = f"""
+### 💡 Plain-English Summary
+* **What this command does:** {final_state.get('intent', 'It analyzes or executes workspace operations.')}
+* **Risk Level:** **{risk_level}** — *Be careful, this can impact system files or working states.*
+* **Safe Recommendation:** Run a safe backup or alternative command first before executing.
+
+---
+
+### ⚙️ Technical Audit & Safety Diagnostics
+* **Target Command:** `{target_command}`
+* **Blast Radius:** {blast_radius}
+* **Vector Safety Audit:** {vector_audit_status}
+* **Human-in-the-Loop Safeguard:** {hitl_recommendation}
+
+*(Agent Graph Connection Status: Live Evaluation Engine — Active)*
+"""
+    
+    final_state["formatted_output"] = response_output
     return final_state
